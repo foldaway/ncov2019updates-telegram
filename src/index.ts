@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import Telegraf, {ContextMessageUpdate} from 'telegraf';
+import Telegraf, { ContextMessageUpdate } from 'telegraf';
 
 const { TELEGRAM_BOT_TOKEN } = process.env;
 
