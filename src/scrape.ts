@@ -1,7 +1,9 @@
 import puppeteer, { Page } from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
 
-const redisClient = createHandyClient();
+const redisClient = createHandyClient({
+  db: 2,
+});
 
 interface Article {
   title: string;
@@ -142,12 +144,31 @@ async function scrape() {
   });
 
   const nhcData = await nhc(page);
+  await redisClient.set('NHC.LATEST_ARTICLE', nhcData[0].link);
   console.log(nhcData);
 
   const mohData = await moh(page);
+  await redisClient.set('MOH.LATEST_ARTICLE', mohData.news[0].link);
+  await redisClient.set('MOH.DORSCON', mohData.dorscon.toString());
+  await redisClient.set(
+    'MOH.CONFIRMED_CASES',
+    mohData.confirmedCases.toString()
+  );
   console.log(mohData);
 
   const bnoData = await bnoNews(page);
+
+  // List of regions
+  await redisClient.lpush('REGIONS', ...bnoData.map(data => data.region));
+  for (const data of bnoData) {
+    await redisClient.hmset(
+      `BNO.${data.region}`,
+      ['region', data.region],
+      ['cases', data.cases.toString()],
+      ['deaths', data.deaths.toString()],
+      ['notes', data.notes]
+    );
+  }
   console.log(bnoData);
 
   await browser.close();
