@@ -1,4 +1,7 @@
 import puppeteer, { Page } from 'puppeteer';
+import { createHandyClient } from 'handy-redis';
+
+const redisClient = createHandyClient();
 
 interface Article {
   title: string;

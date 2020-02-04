@@ -52,6 +52,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/redis@^2.8.6":
+  version "2.8.14"
+  resolved "https://registry.yarnpkg.com/@types/redis/-/redis-2.8.14.tgz#2ed46d0f923f7ccd63fbe73a46a1241e606cf716"
+  integrity sha512-255dzsOLJdXFHBio9/aMHGozNkoiBUgc+g2nlNjbTSp5qcAlmpm4Z6Xs3pKOBLNIKdZbA2BkUxWvYSIwKra0Yw==
+  dependencies:
+    "@types/node" "*"
+
 "@typescript-eslint/eslint-plugin@^2.18.0":
   version "2.18.0"
   resolved "https://registry.yarnpkg.com/@typescript-eslint/eslint-plugin/-/eslint-plugin-2.18.0.tgz#f8cf272dfb057ecf1ea000fea1e0b3f06a32f9cb"
@@ -543,6 +550,14 @@ globals@^12.1.0:
   integrity sha512-wAfjdLgFsPZsklLJvOBUBmzYE8/CwhEqSBEMRXA3qxIiNtyqvjYurAtIfDh6chlEPUfmTY3MnZh5Hfh4q0UlIw==
   dependencies:
     type-fest "^0.8.1"
+
+handy-redis@^1.7.0:
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/handy-redis/-/handy-redis-1.7.0.tgz#9520e0f428604f6407d131429349498e6114a729"
+  integrity sha512-Jeo36GsJmpPqyLIwWSyqEzkuN8/mSuiFZK1U3MbPzSMgXI55I6JdWOYEC3WoOUIOsS6sQSaLDH+99H2gF06+qQ==
+  dependencies:
+    "@types/redis" "^2.8.6"
+    redis "^2.8.0"
 
 has-flag@^3.0.0:
   version "3.0.0"
