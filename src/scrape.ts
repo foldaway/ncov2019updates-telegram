@@ -68,6 +68,42 @@ async function moh(page: Page) {
   return { confirmedCases, dorscon, news };
 }
 
+async function bnoNews(page: Page) {
+  await page.goto(
+    'https://bnonews.com/index.php/2020/02/the-latest-coronavirus-cases/'
+  );
+
+  return page.evaluate(() => {
+    const tables: HTMLTableElement[] = [].slice.call(
+      document.querySelectorAll('.wp-block-table')
+    );
+
+    const data: Record<string, any>[] = [];
+
+    for (const table of tables) {
+      const rows: HTMLTableRowElement[] = [].slice.call(
+        table.querySelectorAll('tr'),
+        1
+      );
+
+      for (const row of rows) {
+        const cells: HTMLTableCellElement[] = [].slice.call(
+          row.querySelectorAll('td')
+        );
+
+        data.push({
+          region: cells[0].textContent,
+          cases: parseInt(cells[1].textContent || '', 10),
+          deaths: parseInt(cells[2].textContent || '', 10),
+          notes: cells[3].textContent,
+        });
+      }
+    }
+
+    return data.filter(d => d.region !== 'TOTAL');
+  });
+}
+
 async function scrape() {
   console.log('Scraping');
   const browser = await puppeteer.launch({
@@ -88,6 +124,10 @@ async function scrape() {
 
   const mohData = await moh(page);
   console.log(mohData);
+
+  await browser.close();
+  const bnoData = await bnoNews(page);
+  console.log(bnoData);
 
   await browser.close();
 }
