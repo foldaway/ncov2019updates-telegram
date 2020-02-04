@@ -153,4 +153,4 @@ async function scrape() {
   await browser.close();
 }
 
-scrape().then(console.log);
+scrape().then(() => process.exit(0));
