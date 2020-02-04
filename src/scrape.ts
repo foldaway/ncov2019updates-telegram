@@ -1,7 +1,26 @@
 import puppeteer, { Page } from 'puppeteer';
 
+interface Article {
+  title: string;
+  link: string;
+  date: string;
+}
+
+interface MOH {
+  confirmedCases: number;
+  dorscon: number;
+  news: Article[];
+}
+
+interface BNOData {
+  region: string;
+  cases: number;
+  deaths: number;
+  notes: string;
+}
+
 // National Health Commission of the People's Republic of China
-async function nhc(page: Page): Promise<Record<string, any>[]> {
+async function nhc(page: Page): Promise<Article[]> {
   await page.goto('http://en.nhc.gov.cn/news.html');
 
   const list = await page.waitForSelector('.section-list > .list > ul');
@@ -9,15 +28,15 @@ async function nhc(page: Page): Promise<Record<string, any>[]> {
   return page.evaluate(list => {
     const newsItems = [].slice.call(list.querySelectorAll('li'));
     return newsItems.map((item: HTMLLIElement) => ({
-      title: item?.querySelector('a')?.textContent,
-      link: item?.querySelector('a')?.href,
-      date: item?.querySelector('.list-date')?.textContent,
+      title: item?.querySelector('a')?.textContent || '',
+      link: item?.querySelector('a')?.href || '',
+      date: item?.querySelector('.list-date')?.textContent || '',
     }));
   }, list);
 }
 
 // Ministry of Health, Republic of Singapore
-async function moh(page: Page) {
+async function moh(page: Page): Promise<MOH> {
   await page.goto('https://www.moh.gov.sg/2019-ncov-wuhan');
 
   await page.waitForSelector('.sfContentBlock');
@@ -36,9 +55,9 @@ async function moh(page: Page) {
     '//*[contains(text(), "DORSCON Level")]/ancestor::td/following-sibling::td'
   );
 
-  const dorscon = await dorsconElem?.[0]?.$eval(
-    'span',
-    elem => elem.textContent
+  const dorscon = parseInt(
+    (await dorsconElem?.[0]?.$eval('span', elem => elem.textContent)) || '',
+    10
   );
 
   const newsTable = (
@@ -57,9 +76,9 @@ async function moh(page: Page) {
     for (const row of rows) {
       const cells = row.querySelectorAll('td');
       data.push({
-        date: cells[0].textContent,
-        title: cells[1].textContent,
-        link: cells[1].querySelector('a')?.href,
+        date: cells[0].textContent || '',
+        title: cells[1].textContent || '',
+        link: cells[1].querySelector('a')?.href || '',
       });
     }
     return data;
@@ -68,7 +87,7 @@ async function moh(page: Page) {
   return { confirmedCases, dorscon, news };
 }
 
-async function bnoNews(page: Page) {
+async function bnoNews(page: Page): Promise<BNOData[]> {
   await page.goto(
     'https://bnonews.com/index.php/2020/02/the-latest-coronavirus-cases/'
   );
@@ -78,7 +97,7 @@ async function bnoNews(page: Page) {
       document.querySelectorAll('.wp-block-table')
     );
 
-    const data: Record<string, any>[] = [];
+    const data: BNOData[] = [];
 
     for (const table of tables) {
       const rows: HTMLTableRowElement[] = [].slice.call(
@@ -92,10 +111,10 @@ async function bnoNews(page: Page) {
         );
 
         data.push({
-          region: cells[0].textContent,
+          region: cells[0].textContent || '',
           cases: parseInt(cells[1].textContent || '', 10),
           deaths: parseInt(cells[2].textContent || '', 10),
-          notes: cells[3].textContent,
+          notes: cells[3].textContent || '',
         });
       }
     }
@@ -125,7 +144,6 @@ async function scrape() {
   const mohData = await moh(page);
   console.log(mohData);
 
-  await browser.close();
   const bnoData = await bnoNews(page);
   console.log(bnoData);
 
