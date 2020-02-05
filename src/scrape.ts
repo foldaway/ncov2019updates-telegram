@@ -13,7 +13,7 @@ interface Article {
 
 interface MOH {
   confirmedCases: number;
-  dorscon: number;
+  dorscon: string;
   news: Article[];
 }
 
@@ -60,10 +60,8 @@ async function moh(page: Page): Promise<MOH> {
     '//*[contains(text(), "DORSCON Level")]/ancestor::td/following-sibling::td'
   );
 
-  const dorscon = parseInt(
-    (await dorsconElem?.[0]?.$eval('span', elem => elem.textContent)) || '',
-    10
-  );
+  const dorscon =
+    (await dorsconElem?.[0]?.$eval('span', elem => elem.textContent)) || '';
 
   const newsTable = (
     await page.$x(
@@ -149,7 +147,7 @@ async function scrape() {
 
   const mohData = await moh(page);
   await redisClient.set('MOH.LATEST_ARTICLE', mohData.news[0].link);
-  await redisClient.set('MOH.DORSCON', mohData.dorscon.toString());
+  await redisClient.set('MOH.DORSCON', mohData.dorscon);
   await redisClient.set(
     'MOH.CONFIRMED_CASES',
     mohData.confirmedCases.toString()
