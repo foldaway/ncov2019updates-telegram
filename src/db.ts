@@ -108,6 +108,6 @@ Region.hasMany(Subscription, {
   as: 'region',
 });
 
-sequelize.sync({ force: true });
+sequelize.sync({ alter: true });
 
 export { sequelize, News, NewsSource, Subscription, Region };
