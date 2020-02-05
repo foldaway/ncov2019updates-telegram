@@ -2,6 +2,7 @@ import { Sequelize, Model, DataTypes, BuildOptions } from 'sequelize';
 import * as dotenv from 'dotenv';
 import NewsSource from './models/news-source';
 import News from './models/news';
+import Subscription from './models/subscription';
 
 dotenv.config();
 const sequelize = new Sequelize(process.env.DATABASE_URL!);
@@ -47,6 +48,24 @@ News.init(
   {
     sequelize,
     tableName: 'news',
+  }
+);
+
+Subscription.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    chatId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    tableName: 'subscription',
   }
 );
 
