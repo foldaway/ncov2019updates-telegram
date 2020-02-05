@@ -157,7 +157,9 @@ async function scrape() {
   const bnoData = await bnoNews(page);
 
   // List of regions
-  await redisClient.lpush('REGIONS', ...bnoData.map(data => data.region));
+  await redisClient.del('REGIONS');
+  await redisClient.rpush('REGIONS', ...bnoData.map(data => data.region));
+
   for (const data of bnoData) {
     await redisClient.hmset(
       `BNO.${data.region}`,
