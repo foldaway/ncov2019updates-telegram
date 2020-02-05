@@ -22,6 +22,7 @@ NewsSource.init(
   {
     sequelize,
     tableName: 'news_source',
+    underscored: true,
   }
 );
 
@@ -48,6 +49,7 @@ News.init(
   {
     sequelize,
     tableName: 'news',
+    underscored: true,
   }
 );
 
@@ -66,10 +68,13 @@ Subscription.init(
   {
     sequelize,
     tableName: 'subscription',
+    underscored: true,
   }
 );
 
-News.belongsTo(NewsSource);
+News.belongsTo(NewsSource, {
+  foreignKey: 'news_source_id',
+});
 NewsSource.hasMany(News, {
   sourceKey: 'id',
   as: 'source',

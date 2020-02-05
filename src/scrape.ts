@@ -156,7 +156,7 @@ async function scrape() {
         title: article.title,
         link: article.link,
         writtenAt: article.date,
-        NewsSourceId: nhcSource.id,
+        news_source_id: nhcSource.id,
       },
     });
   }
@@ -174,7 +174,7 @@ async function scrape() {
         title: article.title,
         link: article.link,
         writtenAt: article.date,
-        NewsSourceId: mohSource.id,
+        news_source_id: mohSource.id,
       },
     });
   }
