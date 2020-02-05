@@ -1,6 +1,6 @@
 import puppeteer, { Page } from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
-import { News, NewsSource } from './db';
+import { News, NewsSource, Subscription, Region } from './db';
 
 const redisClient = createHandyClient({
   db: 2,
@@ -192,6 +192,11 @@ async function scrape() {
   await redisClient.rpush('REGIONS', ...bnoData.map(data => data.region));
 
   for (const data of bnoData) {
+    await Region.findOrCreate({
+      where: {
+        name: data.region,
+      },
+    });
     await redisClient.hmset(
       `BNO.${data.region}`,
       ['region', data.region],
