@@ -164,4 +164,26 @@ bot.command('unsubscribe', async ctx => {
   });
 });
 
+bot.command('subscriptions', async ctx => {
+  const subscriptions = await Subscription.findAll({
+    attributes: ['region_id'],
+    where: {
+      chatId: (await ctx.getChat()).id,
+    },
+    include: ['region'],
+  });
+
+  if (subscriptions.length === 0) {
+    await ctx.reply('You do not have any subscriptions');
+    return;
+  }
+
+  await ctx.reply(
+    `*Subscriptions*:\n${subscriptions
+      .map((sub: Subscription) => `- ${sub.region.name}`)
+      .join('\n')}                  `,
+    { parse_mode: 'Markdown' }
+  );
+});
+
 bot.launch();
