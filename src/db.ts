@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import NewsSource from './models/news-source';
 import News from './models/news';
 import Subscription from './models/subscription';
+import Region from './models/region';
 
 dotenv.config();
 const sequelize = new Sequelize(process.env.DATABASE_URL!);
@@ -53,6 +54,14 @@ News.init(
   }
 );
 
+News.belongsTo(NewsSource, {
+  foreignKey: 'news_source_id',
+});
+NewsSource.hasMany(News, {
+  sourceKey: 'id',
+  as: 'source',
+});
+
 Subscription.init(
   {
     id: {
@@ -72,14 +81,33 @@ Subscription.init(
   }
 );
 
-News.belongsTo(NewsSource, {
-  foreignKey: 'news_source_id',
+Region.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    tableName: 'region',
+    underscored: true,
+  }
+);
+
+Subscription.belongsTo(Region, {
+  foreignKey: 'region_id',
 });
-NewsSource.hasMany(News, {
+Region.hasMany(Subscription, {
   sourceKey: 'id',
-  as: 'source',
+  as: 'region',
 });
 
 sequelize.sync({ force: true });
 
-export { sequelize, News, NewsSource };
+export { sequelize, News, NewsSource, Subscription, Region };
