@@ -1,5 +1,7 @@
 import puppeteer, { Page } from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
+import { sequelize, News, NewsSource } from './db';
+import { FindOrCreateOptions } from 'sequelize/types';
 
 const redisClient = createHandyClient({
   db: 2,
@@ -142,11 +144,41 @@ async function scrape() {
   });
 
   const nhcData = await nhc(page);
-  await redisClient.set('NHC.LATEST_ARTICLE', nhcData[0].link);
+  const [nhcSource] = await NewsSource.findOrCreate({
+    where: {
+      name: 'NHC',
+    },
+  });
+
+  for (const article of nhcData) {
+    await News.findOrCreate({
+      where: {
+        title: article.title,
+        link: article.link,
+        writtenAt: article.date,
+        NewsSourceId: nhcSource.id,
+      },
+    });
+  }
   console.log(nhcData);
 
   const mohData = await moh(page);
-  await redisClient.set('MOH.LATEST_ARTICLE', mohData.news[0].link);
+  const [mohSource] = await NewsSource.findOrCreate({
+    where: {
+      name: 'MOH',
+    },
+  });
+  for (const article of mohData.news) {
+    await News.findOrCreate({
+      where: {
+        title: article.title,
+        link: article.link,
+        writtenAt: article.date,
+        NewsSourceId: mohSource.id,
+      },
+    });
+  }
+
   await redisClient.set('MOH.DORSCON', mohData.dorscon);
   await redisClient.set(
     'MOH.CONFIRMED_CASES',
