@@ -1,6 +1,9 @@
 import puppeteer, { Page } from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
 import { News, NewsSource, Subscription, Region } from './db';
+import { Telegram } from 'telegraf';
+
+const tg = new Telegram(process.env.TELEGRAM_BOT_TOKEN!);
 
 const redisClient = createHandyClient({
   db: 2,
@@ -178,7 +181,39 @@ async function scrape() {
     });
   }
 
+  const sgRegion = await Region.findOne({ where: { name: 'Singapore' } });
+
+  const sgSubscriptions: Subscription[] = await Subscription.findAll({
+    where: {
+      region_id: sgRegion.id,
+    },
+  });
+
+  const currentDorscon = await redisClient.get('MOH.DORSCON');
+  if (currentDorscon !== mohData.dorscon) {
+    for (const sub of sgSubscriptions) {
+      await tg.sendMessage(
+        sub.chatId,
+        `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``,
+        { parse_mode: 'Markdown' }
+      );
+    }
+  }
   await redisClient.set('MOH.DORSCON', mohData.dorscon);
+
+  const currentMOHConfirmedCases = parseInt(
+    (await redisClient.get('MOH.CONFIRMED_CASES')) || '',
+    10
+  );
+  if (currentMOHConfirmedCases !== mohData.confirmedCases) {
+    for (const sub of sgSubscriptions) {
+      await tg.sendMessage(
+        sub.chatId,
+        `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``,
+        { parse_mode: 'Markdown' }
+      );
+    }
+  }
   await redisClient.set(
     'MOH.CONFIRMED_CASES',
     mohData.confirmedCases.toString()
@@ -192,11 +227,36 @@ async function scrape() {
   await redisClient.rpush('REGIONS', ...bnoData.map(data => data.region));
 
   for (const data of bnoData) {
-    await Region.findOrCreate({
+    const [region] = await Region.findOrCreate({
       where: {
         name: data.region,
       },
     });
+
+    const currentData = await redisClient.hgetall(`BNO.${data.region}`);
+    if (
+      parseInt(currentData.cases || '', 10) !== data.cases ||
+      parseInt(currentData.deaths || '', 10) !== data.deaths ||
+      currentData.notes !== data.notes
+    ) {
+      const subscriptions: Subscription[] = await Subscription.findAll({
+        where: {
+          region_id: region.id,
+        },
+      });
+
+      for (const sub of subscriptions) {
+        await tg.sendMessage(
+          sub.chatId,
+          `*UPDATE:* _${data.region}_
+Cases: \`${currentData.cases}\` → \`${data.cases}\`
+Deaths: \`${currentData.deaths}\` → \`${data.deaths}\`
+Notes: \`${currentData.notes}\` → \`${data.notes}\``,
+          { parse_mode: 'Markdown' }
+        );
+      }
+    }
+
     await redisClient.hmset(
       `BNO.${data.region}`,
       ['region', data.region],
