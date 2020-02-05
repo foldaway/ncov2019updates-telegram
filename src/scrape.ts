@@ -1,7 +1,6 @@
 import puppeteer, { Page } from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
-import { sequelize, News, NewsSource } from './db';
-import { FindOrCreateOptions } from 'sequelize/types';
+import { News, NewsSource } from './db';
 
 const redisClient = createHandyClient({
   db: 2,
