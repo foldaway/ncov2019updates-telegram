@@ -115,8 +115,8 @@ async function bnoNews(page: Page): Promise<BNOData[]> {
 
         data.push({
           region: cells[0].textContent || '',
-          cases: parseInt(cells[1].textContent || '', 10),
-          deaths: parseInt(cells[2].textContent || '', 10),
+          cases: parseInt(cells[1].textContent?.replace(/,/g, '') || '', 10),
+          deaths: parseInt(cells[2].textContent?.replace(/,/g, '') || '', 10),
           notes: cells[3].textContent || '',
         });
       }
