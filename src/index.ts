@@ -70,6 +70,7 @@ subscribeScene.on('message', async ctx => {
 
   if (!subscription) {
     ctx.reply('Error subscribing');
+    await ctx.scene.leave();
     return;
   }
 
@@ -77,7 +78,38 @@ subscribeScene.on('message', async ctx => {
   await ctx.scene.leave();
 });
 
-const stage = new Stage([statusScene, subscribeScene]);
+const unsubscribeScene = new BaseScene('unsubscribe');
+unsubscribeScene.on('message', async ctx => {
+  const regionName = ctx.message?.text;
+  const region: Region = await Region.findOne({
+    where: { name: regionName || '' },
+  });
+  if (!region) {
+    ctx.reply('Region not found!');
+    await ctx.scene.leave();
+    return;
+  }
+
+  const subscription: Subscription = await Subscription.findOne({
+    where: {
+      chatId: (await ctx.getChat()).id,
+      region_id: region.id,
+    },
+  });
+
+  if (!subscription) {
+    ctx.reply(`You do not have a subcription to '${regionName}'`);
+    await ctx.scene.leave();
+    return;
+  }
+
+  await subscription.destroy();
+  ctx.reply(`Unsubscribed from '${regionName}'`);
+
+  await ctx.scene.leave();
+});
+
+const stage = new Stage([statusScene, subscribeScene, unsubscribeScene]);
 stage.command('cancel', Stage.leave());
 
 bot.use(session());
@@ -100,13 +132,36 @@ async function displayRegionsKeyboard(
 bot.start((ctx: ContextMessageUpdate) => ctx.reply('wtf'));
 
 bot.command('status', async ctx => {
+  await ctx.scene.enter('status');
   await displayRegionsKeyboard(ctx);
-  ctx.scene.enter('status');
 });
 
 bot.command('subscribe', async ctx => {
+  await ctx.scene.enter('subscribe');
   await displayRegionsKeyboard(ctx);
-  ctx.scene.enter('subscribe');
+});
+
+bot.command('unsubscribe', async ctx => {
+  const subscriptions = await Subscription.findAll({
+    attributes: ['region_id'],
+    where: {
+      chatId: (await ctx.getChat()).id,
+    },
+    include: ['region'],
+  });
+
+  if (subscriptions.length === 0) {
+    await ctx.reply('You do not have any subscriptions');
+    return;
+  }
+
+  await ctx.scene.enter('unsubscribe');
+  ctx.reply('Choose a subscription', {
+    reply_markup: {
+      one_time_keyboard: true,
+      keyboard: subscriptions.map((sub: Subscription) => [sub.region.name]),
+    },
+  });
 });
 
 bot.launch();

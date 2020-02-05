@@ -102,6 +102,7 @@ Region.init(
 
 Subscription.belongsTo(Region, {
   foreignKey: 'region_id',
+  as: 'region',
 });
 Region.hasMany(Subscription, {
   sourceKey: 'id',
