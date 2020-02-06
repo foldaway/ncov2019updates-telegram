@@ -30,6 +30,8 @@ async function scrape(): Promise<void> {
     });
   });
 
+  // CHINA
+
   const nhcData = await nhc(page);
   const [nhcSource] = await NewsSource.findOrCreate({
     where: {
@@ -147,6 +149,8 @@ async function scrape(): Promise<void> {
     mohData.confirmedCases.toString()
   );
   console.log(mohData);
+
+  // GLOBAL
 
   const bnoData = await bnoNews(page);
 
