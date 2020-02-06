@@ -35,55 +35,59 @@ async function scrape(): Promise<void> {
 
   // CHINA
 
-  const nhcData = await nhc(page);
-  const [nhcSource] = await NewsSource.findOrCreate({
-    where: {
-      name: 'NHC',
-    },
-  });
-
-  const existingNHCArticles: Article[] = await News.findAll({
-    where: {
-      news_source_id: nhcSource.id,
-    },
-  });
-  const nhcPush: string[] = [];
-
-  const chinaRegions: Region[] = await Region.findAll({
-    where: {
-      name: {
-        [Op.iLike]: '%province%',
-      },
-    },
-  });
-
-  for (const article of nhcData) {
-    if (!existingNHCArticles.find(a => a.link === article.link)) {
-      nhcPush.push(`[${article.title}](${article.link})`);
-    }
-
-    await News.findOrCreate({
+  try {
+    const nhcData = await nhc(page);
+    const [nhcSource] = await NewsSource.findOrCreate({
       where: {
-        title: article.title,
-        link: article.link,
-        writtenAt: article.date,
+        name: 'NHC',
+      },
+    });
+
+    const existingNHCArticles: Article[] = await News.findAll({
+      where: {
         news_source_id: nhcSource.id,
       },
     });
-  }
+    const nhcPush: string[] = [];
 
-  const chinaSubscriptions = await Subscription.findAll({
-    attributes: ['chatId'],
-    where: {
-      region_id: chinaRegions.map(r => r.id),
-    },
-    group: 'chatId',
-  });
+    const chinaRegions: Region[] = await Region.findAll({
+      where: {
+        name: {
+          [Op.iLike]: '%province%',
+        },
+      },
+    });
 
-  console.log(nhcData);
+    for (const article of nhcData) {
+      if (!existingNHCArticles.find(a => a.link === article.link)) {
+        nhcPush.push(`[${article.title}](${article.link})`);
+      }
 
-  if (nhcPush.length > 0) {
-    broadcast(tg, chinaSubscriptions, nhcPush.join('\n\n'));
+      await News.findOrCreate({
+        where: {
+          title: article.title,
+          link: article.link,
+          writtenAt: article.date,
+          news_source_id: nhcSource.id,
+        },
+      });
+    }
+
+    const chinaSubscriptions = await Subscription.findAll({
+      attributes: ['chatId'],
+      where: {
+        region_id: chinaRegions.map(r => r.id),
+      },
+      group: 'chatId',
+    });
+
+    console.log(nhcData);
+
+    if (nhcPush.length > 0) {
+      broadcast(tg, chinaSubscriptions, nhcPush.join('\n\n'));
+    }
+  } catch (e) {
+    console.error(e);
   }
 
   // SINGAPORE
