@@ -184,7 +184,7 @@ async function scrape(): Promise<void> {
       await broadcast(
         tg,
         subscriptions,
-        `*${data.region}*\n${formatChanges(currentData, data)}`
+        `REGION: *${data.region}*\n${formatChanges(currentData, data)}`
       );
     }
 

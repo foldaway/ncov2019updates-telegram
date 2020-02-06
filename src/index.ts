@@ -42,7 +42,7 @@ statusScene.on('message', async ctx => {
   const data = await redisClient.hgetall(`BNO.${ctx.message?.text}`);
   await ctx.reply(
     Object.keys(data)
-      .map(key => `*${key}:* ${data[key]}`)
+      .map(key => `${key.toUpperCase()}: *${data[key]}*`)
       .join('\n'),
     { parse_mode: 'Markdown' }
   );
