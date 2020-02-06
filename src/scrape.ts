@@ -2,6 +2,8 @@ import puppeteer, { Page } from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
 import { News, NewsSource, Subscription, Region } from './db';
 import { Telegram } from 'telegraf';
+import { sleep } from './util';
+import { Op } from 'sequelize';
 
 const tg = new Telegram(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -152,7 +154,26 @@ async function scrape() {
     },
   });
 
+  const existingNHCArticles: Article[] = await News.findAll({
+    where: {
+      news_source_id: nhcSource.id,
+    },
+  });
+  const nhcPush: string[] = [];
+
+  const chinaRegions: Region[] = await Region.findAll({
+    where: {
+      name: {
+        [Op.iLike]: '%province%',
+      },
+    },
+  });
+
   for (const article of nhcData) {
+    if (!existingNHCArticles.find(a => a.link === article.link)) {
+      nhcPush.push(`[${article.title}](${article.link})`);
+    }
+
     await News.findOrCreate({
       where: {
         title: article.title,
@@ -162,7 +183,27 @@ async function scrape() {
       },
     });
   }
+
+  const chinaSubscriptions = await Subscription.findAll({
+    attributes: ['chatId'],
+    where: {
+      region_id: chinaRegions.map(r => r.id),
+    },
+    group: 'chatId',
+  });
+
   console.log(nhcData);
+
+  if (nhcPush.length > 0) {
+    for (const sub of chinaSubscriptions) {
+      tg.sendMessage(sub.chatId, nhcPush.join('\n\n'), {
+        parse_mode: 'Markdown',
+      });
+      await sleep(1000);
+    }
+  }
+
+  // SINGAPORE
 
   const mohData = await moh(page);
   const [mohSource] = await NewsSource.findOrCreate({
@@ -170,16 +211,6 @@ async function scrape() {
       name: 'MOH',
     },
   });
-  for (const article of mohData.news) {
-    await News.findOrCreate({
-      where: {
-        title: article.title,
-        link: article.link,
-        writtenAt: article.date,
-        news_source_id: mohSource.id,
-      },
-    });
-  }
 
   const sgRegion = await Region.findOne({ where: { name: 'Singapore' } });
 
@@ -189,6 +220,34 @@ async function scrape() {
     },
   });
 
+  const existingMOHArticles: Article[] = await News.findAll({
+    where: {
+      news_source_id: mohSource.id,
+    },
+  });
+  const mohPush: string[] = [];
+  for (const article of mohData.news) {
+    if (!existingMOHArticles.find(a => a.link === article.link)) {
+      mohPush.push(`[${article.title}](${article.link})`);
+    }
+    await News.findOrCreate({
+      where: {
+        title: article.title,
+        link: article.link,
+        writtenAt: article.date,
+        news_source_id: mohSource.id,
+      },
+    });
+  }
+  if (mohPush.length > 0) {
+    for (const sub of sgSubscriptions) {
+      tg.sendMessage(sub.chatId, mohPush.join('\n\n'), {
+        parse_mode: 'Markdown',
+      });
+      await sleep(1000);
+    }
+  }
+
   const currentDorscon = await redisClient.get('MOH.DORSCON');
   if (currentDorscon !== mohData.dorscon) {
     for (const sub of sgSubscriptions) {
@@ -197,6 +256,7 @@ async function scrape() {
         `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``,
         { parse_mode: 'Markdown' }
       );
+      await sleep(1000);
     }
   }
   await redisClient.set('MOH.DORSCON', mohData.dorscon);
@@ -212,6 +272,7 @@ async function scrape() {
         `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``,
         { parse_mode: 'Markdown' }
       );
+      await sleep(1000);
     }
   }
   await redisClient.set(
