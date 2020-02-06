@@ -175,26 +175,28 @@ async function scrape(): Promise<void> {
     });
 
     const currentData = await redisClient.hgetall(`BNO.${data.region}`);
-    // Patch numbers
-    currentData.cases = parseInt(currentData.cases || '', 10);
-    currentData.deaths = parseInt(currentData.deaths || '', 10);
+    if (currentData) {
+      // Patch numbers
+      currentData.cases = parseInt(currentData.cases || '', 10);
+      currentData.deaths = parseInt(currentData.deaths || '', 10);
 
-    if (
-      currentData.cases !== data.cases ||
-      currentData.deaths !== data.deaths ||
-      currentData.notes !== data.notes
-    ) {
-      const subscriptions: Subscription[] = await Subscription.findAll({
-        where: {
-          region_id: region.id,
-        },
-      });
+      if (
+        currentData.cases !== data.cases ||
+        currentData.deaths !== data.deaths ||
+        currentData.notes !== data.notes
+      ) {
+        const subscriptions: Subscription[] = await Subscription.findAll({
+          where: {
+            region_id: region.id,
+          },
+        });
 
-      await broadcast(
-        tg,
-        subscriptions,
-        `REGION: *${data.region}*\n${formatChanges(currentData, data)}`
-      );
+        await broadcast(
+          tg,
+          subscriptions,
+          `REGION: *${data.region}*\n${formatChanges(currentData, data)}`
+        );
+      }
     }
 
     await redisClient.hmset(
