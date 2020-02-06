@@ -12,7 +12,7 @@ import { bnoNews, formatChanges } from './sources/bno';
 const tg = new Telegram(process.env.TELEGRAM_BOT_TOKEN!);
 
 const redisClient = createHandyClient({
-  db: 2,
+  url: process.env.REDIS_URL,
 });
 
 async function scrape(): Promise<void> {

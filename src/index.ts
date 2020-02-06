@@ -18,7 +18,7 @@ if (!TELEGRAM_BOT_TOKEN) {
 }
 
 const redisClient = createHandyClient({
-  db: 2,
+  url: process.env.REDIS_URL,
 });
 
 const bot: Telegraf<SceneContextMessageUpdate> = new Telegraf(
