@@ -201,6 +201,7 @@ bot.command('sources', ctx =>
 if (process.env.NODE_ENV === 'production') {
   bot.launch({
     webhook: {
+      domain: process.env.TELEGRAM_WEBHOOK_DOMAIN,
       port: parseInt(process.env.PORT!),
       hookPath: '/webhook',
     },
