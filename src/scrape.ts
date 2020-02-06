@@ -99,7 +99,9 @@ async function scrape(): Promise<void> {
     },
   });
 
-  const sgRegion = await Region.findOne({ where: { name: 'Singapore' } });
+  const [sgRegion] = await Region.findOrCreate({
+    where: { name: 'Singapore' },
+  });
 
   const sgSubscriptions: Subscription[] = await Subscription.findAll({
     where: {
