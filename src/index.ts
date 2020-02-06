@@ -198,4 +198,13 @@ bot.command('sources', ctx =>
   )
 );
 
-bot.launch();
+if (process.env.NODE_ENV === 'production') {
+  bot.launch({
+    webhook: {
+      port: parseInt(process.env.PORT!),
+      hookPath: '/webhook',
+    },
+  });
+} else {
+  bot.launch();
+}
