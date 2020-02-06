@@ -15,11 +15,14 @@ const redisClient = createHandyClient({
   url: process.env.REDIS_URL,
 });
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 async function scrape(): Promise<void> {
   console.log('Scraping');
   const browser = await puppeteer.launch({
-    headless: process.env.NODE_ENV === 'production',
+    headless: isProduction,
     defaultViewport: null,
+    args: isProduction ? ['--no-sandbox'] : [],
   });
   const page = await browser.newPage();
 
