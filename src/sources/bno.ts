@@ -42,3 +42,22 @@ export async function bnoNews(page: Page): Promise<BNOData[]> {
     return data.filter(d => d.region !== 'TOTAL');
   });
 }
+
+function formatDiff(oldNum: number, newNum: number): string {
+  if (oldNum === newNum) {
+    return '=';
+  }
+  return `${oldNum > newNum ? '-' : '+'}${Math.abs(oldNum - newNum)}`;
+}
+
+export function formatChanges(oldData: BNOData, newData: BNOData): string {
+  return `CASES: *${oldData.cases} → ${newData.cases}* (${formatDiff(
+    oldData.cases,
+    newData.cases
+  )})
+DEATHS: *${oldData.deaths} → ${newData.deaths}* (${formatDiff(
+    oldData.deaths,
+    newData.deaths
+  )})
+NOTES: *${newData.notes}*`;
+}

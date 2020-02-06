@@ -7,7 +7,7 @@ import { Op } from 'sequelize';
 import { nhc } from './sources/nhc';
 import { Article } from './sources/data-model';
 import { moh } from './sources/moh';
-import { bnoNews } from './sources/bno';
+import { bnoNews, formatChanges } from './sources/bno';
 
 const tg = new Telegram(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -166,9 +166,13 @@ async function scrape(): Promise<void> {
     });
 
     const currentData = await redisClient.hgetall(`BNO.${data.region}`);
+    // Patch numbers
+    currentData.cases = parseInt(currentData.cases || '', 10);
+    currentData.deaths = parseInt(currentData.deaths || '', 10);
+
     if (
-      parseInt(currentData.cases || '', 10) !== data.cases ||
-      parseInt(currentData.deaths || '', 10) !== data.deaths ||
+      currentData.cases !== data.cases ||
+      currentData.deaths !== data.deaths ||
       currentData.notes !== data.notes
     ) {
       const subscriptions: Subscription[] = await Subscription.findAll({
@@ -180,10 +184,7 @@ async function scrape(): Promise<void> {
       await broadcast(
         tg,
         subscriptions,
-        `*UPDATE:* _${data.region}_
-Cases: \`${currentData.cases}\` → \`${data.cases}\`
-Deaths: \`${currentData.deaths}\` → \`${data.deaths}\`
-Notes: \`${currentData.notes}\` → \`${data.notes}\``
+        `*${data.region}*\n${formatChanges(currentData, data)}`
       );
     }
 
