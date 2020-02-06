@@ -129,7 +129,9 @@ async function displayRegionsKeyboard(
   });
 }
 
-bot.start((ctx: ContextMessageUpdate) => ctx.reply('wtf'));
+bot.start((ctx: ContextMessageUpdate) =>
+  ctx.reply('Hi there!\nYou can try /status for a start.')
+);
 
 bot.command('status', async ctx => {
   await ctx.scene.enter('status');
