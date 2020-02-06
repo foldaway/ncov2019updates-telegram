@@ -5,7 +5,9 @@ import { Article } from './data-model';
 export async function nhc(page: Page): Promise<Article[]> {
   await page.goto('http://en.nhc.gov.cn/news.html');
 
-  const list = await page.waitForSelector('.section-list > .list > ul');
+  const list = await page.waitForSelector('.section-list > .list > ul', {
+    timeout: 60000,
+  });
 
   return page.evaluate(list => {
     const newsItems = [].slice.call(list.querySelectorAll('li'));
