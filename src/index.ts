@@ -186,4 +186,14 @@ bot.command('subscriptions', async ctx => {
   );
 });
 
+bot.command('sources', ctx =>
+  ctx.reply(
+    `*Our sources:*
+- BNO NEWS
+- Ministry of Health, Republic of Singapore
+- National Health Commission, People's Republic of China`,
+    { parse_mode: 'Markdown' }
+  )
+);
+
 bot.launch();
