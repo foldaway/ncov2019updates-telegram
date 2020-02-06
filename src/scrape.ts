@@ -1,8 +1,8 @@
-import puppeteer, { Page } from 'puppeteer';
+import puppeteer from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
 import { News, NewsSource, Subscription, Region } from './db';
 import { Telegram } from 'telegraf';
-import { sleep } from './util';
+import { broadcast } from './util';
 import { Op } from 'sequelize';
 import { nhc } from './sources/nhc';
 import { Article } from './sources/data-model';
@@ -78,12 +78,7 @@ async function scrape(): Promise<void> {
   console.log(nhcData);
 
   if (nhcPush.length > 0) {
-    for (const sub of chinaSubscriptions) {
-      tg.sendMessage(sub.chatId, nhcPush.join('\n\n'), {
-        parse_mode: 'Markdown',
-      });
-      await sleep(1000);
-    }
+    broadcast(tg, chinaSubscriptions, nhcPush.join('\n\n'));
   }
 
   // SINGAPORE
@@ -123,24 +118,16 @@ async function scrape(): Promise<void> {
     });
   }
   if (mohPush.length > 0) {
-    for (const sub of sgSubscriptions) {
-      tg.sendMessage(sub.chatId, mohPush.join('\n\n'), {
-        parse_mode: 'Markdown',
-      });
-      await sleep(1000);
-    }
+    await broadcast(tg, sgSubscriptions, mohPush.join('\n\n'));
   }
 
   const currentDorscon = await redisClient.get('MOH.DORSCON');
   if (currentDorscon !== mohData.dorscon) {
-    for (const sub of sgSubscriptions) {
-      await tg.sendMessage(
-        sub.chatId,
-        `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``,
-        { parse_mode: 'Markdown' }
-      );
-      await sleep(1000);
-    }
+    await broadcast(
+      tg,
+      sgSubscriptions,
+      `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``
+    );
   }
   await redisClient.set('MOH.DORSCON', mohData.dorscon);
 
@@ -149,14 +136,11 @@ async function scrape(): Promise<void> {
     10
   );
   if (currentMOHConfirmedCases !== mohData.confirmedCases) {
-    for (const sub of sgSubscriptions) {
-      await tg.sendMessage(
-        sub.chatId,
-        `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``,
-        { parse_mode: 'Markdown' }
-      );
-      await sleep(1000);
-    }
+    await broadcast(
+      tg,
+      sgSubscriptions,
+      `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``
+    );
   }
   await redisClient.set(
     'MOH.CONFIRMED_CASES',
@@ -189,16 +173,14 @@ async function scrape(): Promise<void> {
         },
       });
 
-      for (const sub of subscriptions) {
-        await tg.sendMessage(
-          sub.chatId,
-          `*UPDATE:* _${data.region}_
+      await broadcast(
+        tg,
+        subscriptions,
+        `*UPDATE:* _${data.region}_
 Cases: \`${currentData.cases}\` → \`${data.cases}\`
 Deaths: \`${currentData.deaths}\` → \`${data.deaths}\`
-Notes: \`${currentData.notes}\` → \`${data.notes}\``,
-          { parse_mode: 'Markdown' }
-        );
-      }
+Notes: \`${currentData.notes}\` → \`${data.notes}\``
+      );
     }
 
     await redisClient.hmset(
