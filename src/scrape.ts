@@ -223,7 +223,7 @@ async function scrape(): Promise<void> {
       `TOTAL CASES: *${currentTotalCases} → ${totalCases}* (${formatDiff(
         parseInt(currentTotalCases, 10),
         totalCases
-      )}`
+      )})`
     );
   }
   await redisClient.set('BNO.TOTAL_CASES', totalCases.toString());
