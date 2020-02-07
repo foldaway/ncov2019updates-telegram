@@ -34,7 +34,9 @@ statusScene.on('message', async ctx => {
     where: { name: regionName || '' },
   });
   if (!region) {
-    ctx.reply('Region not found!');
+    ctx.reply('Region not found!', {
+      reply_markup: { remove_keyboard: true },
+    });
     await ctx.scene.leave();
     return;
   }
@@ -44,7 +46,7 @@ statusScene.on('message', async ctx => {
     Object.keys(data)
       .map(key => `${key.toUpperCase()}: *${data[key]}*`)
       .join('\n'),
-    { parse_mode: 'Markdown' }
+    { parse_mode: 'Markdown', reply_markup: { remove_keyboard: true } }
   );
   await ctx.scene.leave();
 });
@@ -56,7 +58,9 @@ subscribeScene.on('message', async ctx => {
     where: { name: regionName || '' },
   });
   if (!region) {
-    ctx.reply('Region not found!');
+    ctx.reply('Region not found!', {
+      reply_markup: { remove_keyboard: true },
+    });
     await ctx.scene.leave();
     return;
   }
@@ -69,12 +73,16 @@ subscribeScene.on('message', async ctx => {
   });
 
   if (!subscription) {
-    ctx.reply('Error subscribing');
+    ctx.reply('Error subscribing', {
+      reply_markup: { remove_keyboard: true },
+    });
     await ctx.scene.leave();
     return;
   }
 
-  ctx.reply(`Subscribed to '${regionName}'`);
+  ctx.reply(`Subscribed to '${regionName}'`, {
+    reply_markup: { remove_keyboard: true },
+  });
   await ctx.scene.leave();
 });
 
@@ -85,7 +93,9 @@ unsubscribeScene.on('message', async ctx => {
     where: { name: regionName || '' },
   });
   if (!region) {
-    ctx.reply('Region not found!');
+    ctx.reply('Region not found!', {
+      reply_markup: { remove_keyboard: true },
+    });
     await ctx.scene.leave();
     return;
   }
@@ -98,13 +108,17 @@ unsubscribeScene.on('message', async ctx => {
   });
 
   if (!subscription) {
-    ctx.reply(`You do not have a subcription to '${regionName}'`);
+    ctx.reply(`You do not have a subcription to '${regionName}'`, {
+      reply_markup: { remove_keyboard: true },
+    });
     await ctx.scene.leave();
     return;
   }
 
   await subscription.destroy();
-  ctx.reply(`Unsubscribed from '${regionName}'`);
+  ctx.reply(`Unsubscribed from '${regionName}'`, {
+    reply_markup: { remove_keyboard: true },
+  });
 
   await ctx.scene.leave();
 });
