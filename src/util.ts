@@ -17,3 +17,10 @@ export async function broadcast(
     await sleep(1000);
   }
 }
+
+export function formatDiff(oldNum: number, newNum: number): string {
+  if (oldNum === newNum) {
+    return '=';
+  }
+  return `${oldNum > newNum ? '-' : '+'}${Math.abs(oldNum - newNum)}`;
+}
