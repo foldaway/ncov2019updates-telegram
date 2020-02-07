@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
 import { News, NewsSource, Subscription, Region } from './db';
 import { Telegram } from 'telegraf';
-import { broadcast } from './util';
+import { broadcast, formatDiff } from './util';
 import { Op } from 'sequelize';
 import { nhc } from './sources/nhc';
 import { Article } from './sources/data-model';
@@ -208,6 +208,42 @@ async function scrape(): Promise<void> {
     );
   }
   console.log(bnoData);
+
+  // TOTALS
+  const totalCases = bnoData.map(data => data.cases).reduce((a, b) => a + b, 0);
+  const totalDeaths = bnoData
+    .map(data => data.deaths)
+    .reduce((a, b) => a + b, 0);
+
+  const totalPush: string[] = [];
+
+  const currentTotalCases = await redisClient.get('BNO.TOTAL_CASES');
+  if (currentTotalCases && parseInt(currentTotalCases, 10) !== totalCases) {
+    totalPush.push(
+      `TOTAL CASES: *${currentTotalCases} → ${totalCases}* (${formatDiff(
+        parseInt(currentTotalCases, 10),
+        totalCases
+      )}`
+    );
+  }
+  await redisClient.set('BNO.TOTAL_CASES', totalCases.toString());
+
+  const currentTotalDeaths = await redisClient.get('BNO.TOTAL_DEATHS');
+  if (currentTotalDeaths && parseInt(currentTotalDeaths, 10) !== totalDeaths) {
+    totalPush.push(
+      `TOTAL CASES: *${currentTotalDeaths} → ${totalDeaths}* (${formatDiff(
+        parseInt(currentTotalDeaths, 10),
+        totalDeaths
+      )})`
+    );
+  }
+  await redisClient.set('BNO.TOTAL_DEATHS', totalDeaths.toString());
+
+  const allSubs: Subscription[] = await Subscription.findAll();
+
+  if (totalPush.length > 0) {
+    broadcast(tg, allSubs, totalPush.join('\n'));
+  }
 
   await browser.close();
 }
