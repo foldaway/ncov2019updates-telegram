@@ -93,72 +93,76 @@ async function scrape(): Promise<void> {
 
   // SINGAPORE
 
-  const mohData = await moh(page);
-  const [mohSource] = await NewsSource.findOrCreate({
-    where: {
-      name: 'MOH',
-    },
-  });
-
-  const [sgRegion] = await Region.findOrCreate({
-    where: { name: 'Singapore' },
-  });
-
-  const sgSubscriptions: Subscription[] = await Subscription.findAll({
-    where: {
-      region_id: sgRegion.id,
-    },
-  });
-
-  const existingMOHArticles: Article[] = await News.findAll({
-    where: {
-      news_source_id: mohSource.id,
-    },
-  });
-  const mohPush: string[] = [];
-  for (const article of mohData.news) {
-    if (!existingMOHArticles.find(a => a.link === article.link)) {
-      mohPush.push(`[${article.title}](${article.link})`);
-    }
-    await News.findOrCreate({
+  try {
+    const mohData = await moh(page);
+    const [mohSource] = await NewsSource.findOrCreate({
       where: {
-        title: article.title,
-        link: article.link,
-        writtenAt: moment(article.date, 'DD MMM YYYY').toISOString(),
+        name: 'MOH',
+      },
+    });
+
+    const [sgRegion] = await Region.findOrCreate({
+      where: { name: 'Singapore' },
+    });
+
+    const sgSubscriptions: Subscription[] = await Subscription.findAll({
+      where: {
+        region_id: sgRegion.id,
+      },
+    });
+
+    const existingMOHArticles: Article[] = await News.findAll({
+      where: {
         news_source_id: mohSource.id,
       },
     });
-  }
-  if (mohPush.length > 0) {
-    await broadcast(tg, sgSubscriptions, mohPush.join('\n\n'));
-  }
+    const mohPush: string[] = [];
+    for (const article of mohData.news) {
+      if (!existingMOHArticles.find(a => a.link === article.link)) {
+        mohPush.push(`[${article.title}](${article.link})`);
+      }
+      await News.findOrCreate({
+        where: {
+          title: article.title,
+          link: article.link,
+          writtenAt: moment(article.date, 'DD MMM YYYY').toISOString(),
+          news_source_id: mohSource.id,
+        },
+      });
+    }
+    if (mohPush.length > 0) {
+      await broadcast(tg, sgSubscriptions, mohPush.join('\n\n'));
+    }
 
-  const currentDorscon = await redisClient.get('MOH.DORSCON');
-  if (currentDorscon !== mohData.dorscon) {
-    await broadcast(
-      tg,
-      sgSubscriptions,
-      `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``
-    );
-  }
-  await redisClient.set('MOH.DORSCON', mohData.dorscon);
+    const currentDorscon = await redisClient.get('MOH.DORSCON');
+    if (currentDorscon !== mohData.dorscon) {
+      await broadcast(
+        tg,
+        sgSubscriptions,
+        `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``
+      );
+    }
+    await redisClient.set('MOH.DORSCON', mohData.dorscon);
 
-  const currentMOHConfirmedCases = parseInt(
-    (await redisClient.get('MOH.CONFIRMED_CASES')) || '',
-    10
-  );
-  if (currentMOHConfirmedCases !== mohData.confirmedCases) {
-    await broadcast(
-      tg,
-      sgSubscriptions,
-      `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``
+    const currentMOHConfirmedCases = parseInt(
+      (await redisClient.get('MOH.CONFIRMED_CASES')) || '',
+      10
     );
+    if (currentMOHConfirmedCases !== mohData.confirmedCases) {
+      await broadcast(
+        tg,
+        sgSubscriptions,
+        `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``
+      );
+    }
+    await redisClient.set(
+      'MOH.CONFIRMED_CASES',
+      mohData.confirmedCases.toString()
+    );
+    console.log(mohData);
+  } catch (e) {
+    console.error(e);
   }
-  await redisClient.set(
-    'MOH.CONFIRMED_CASES',
-    mohData.confirmedCases.toString()
-  );
-  console.log(mohData);
 
   // GLOBAL
 
