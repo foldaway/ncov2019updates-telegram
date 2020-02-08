@@ -1,4 +1,4 @@
-import { Sequelize, Model, DataTypes, BuildOptions } from 'sequelize';
+import { Sequelize, DataTypes } from 'sequelize';
 import * as dotenv from 'dotenv';
 import NewsSource from './models/news-source';
 import News from './models/news';
@@ -6,7 +6,12 @@ import Subscription from './models/subscription';
 import Region from './models/region';
 
 dotenv.config();
-const sequelize = new Sequelize(process.env.DATABASE_URL!);
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+const sequelize = new Sequelize(process.env.DATABASE_URL!, {
+  logging: !isProduction,
+});
 
 NewsSource.init(
   {
