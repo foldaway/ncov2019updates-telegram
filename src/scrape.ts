@@ -8,6 +8,7 @@ import { nhc } from './sources/nhc';
 import { Article } from './sources/data-model';
 import { moh } from './sources/moh';
 import { bnoNews, formatChanges } from './sources/bno';
+import moment from 'moment';
 
 const tg = new Telegram(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -123,7 +124,7 @@ async function scrape(): Promise<void> {
       where: {
         title: article.title,
         link: article.link,
-        writtenAt: article.date,
+        writtenAt: moment(article.date, 'DD MMM YYYY').toISOString(),
         news_source_id: mohSource.id,
       },
     });
