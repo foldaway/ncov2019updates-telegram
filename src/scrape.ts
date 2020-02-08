@@ -236,7 +236,7 @@ async function scrape(): Promise<void> {
   const currentTotalDeaths = await redisClient.get('BNO.TOTAL_DEATHS');
   if (currentTotalDeaths && parseInt(currentTotalDeaths, 10) !== totalDeaths) {
     totalPush.push(
-      `TOTAL CASES: *${currentTotalDeaths} → ${totalDeaths}* (${formatDiff(
+      `TOTAL DEATHS: *${currentTotalDeaths} → ${totalDeaths}* (${formatDiff(
         parseInt(currentTotalDeaths, 10),
         totalDeaths
       )})`
