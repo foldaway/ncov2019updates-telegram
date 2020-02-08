@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer';
 import { createHandyClient } from 'handy-redis';
 import { News, NewsSource, Subscription, Region } from './db';
 import { Telegram } from 'telegraf';
@@ -18,154 +18,128 @@ const redisClient = createHandyClient({
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-async function scrape(): Promise<void> {
-  console.log('Scraping');
-  const browser = await puppeteer.launch({
-    headless: isProduction,
-    defaultViewport: null,
-    args: isProduction ? ['--no-sandbox'] : [],
-  });
-  const page = await browser.newPage();
-
-  // Disable navigator.webdriver
-  await page.evaluateOnNewDocument(() => {
-    Object.defineProperty(navigator, 'webdriver', {
-      get: () => false,
-    });
+async function scrapeNHC(page: Page): Promise<void> {
+  const nhcData = await nhc(page);
+  const [nhcSource] = await NewsSource.findOrCreate({
+    where: {
+      name: 'NHC',
+    },
   });
 
-  // CHINA
+  const existingNHCArticles: Article[] = await News.findAll({
+    where: {
+      news_source_id: nhcSource.id,
+    },
+  });
+  const nhcPush: string[] = [];
 
-  try {
-    const nhcData = await nhc(page);
-    const [nhcSource] = await NewsSource.findOrCreate({
-      where: {
-        name: 'NHC',
+  const chinaRegions: Region[] = await Region.findAll({
+    where: {
+      name: {
+        [Op.iLike]: '%province%',
       },
-    });
+    },
+  });
 
-    const existingNHCArticles: Article[] = await News.findAll({
+  for (const article of nhcData) {
+    if (!existingNHCArticles.find(a => a.link === article.link)) {
+      nhcPush.push(`[${article.title}](${article.link})`);
+    }
+
+    await News.findOrCreate({
       where: {
+        title: article.title,
+        link: article.link,
+        writtenAt: article.date,
         news_source_id: nhcSource.id,
       },
     });
-    const nhcPush: string[] = [];
-
-    const chinaRegions: Region[] = await Region.findAll({
-      where: {
-        name: {
-          [Op.iLike]: '%province%',
-        },
-      },
-    });
-
-    for (const article of nhcData) {
-      if (!existingNHCArticles.find(a => a.link === article.link)) {
-        nhcPush.push(`[${article.title}](${article.link})`);
-      }
-
-      await News.findOrCreate({
-        where: {
-          title: article.title,
-          link: article.link,
-          writtenAt: article.date,
-          news_source_id: nhcSource.id,
-        },
-      });
-    }
-
-    const chinaSubscriptions = await Subscription.findAll({
-      attributes: ['chatId'],
-      where: {
-        region_id: chinaRegions.map(r => r.id),
-      },
-      group: 'chatId',
-    });
-
-    console.log(nhcData);
-
-    if (nhcPush.length > 0) {
-      broadcast(tg, chinaSubscriptions, nhcPush.join('\n\n'));
-    }
-  } catch (e) {
-    console.error(e);
   }
 
-  // SINGAPORE
+  const chinaSubscriptions = await Subscription.findAll({
+    attributes: ['chatId'],
+    where: {
+      region_id: chinaRegions.map(r => r.id),
+    },
+    group: 'chatId',
+  });
 
-  try {
-    const mohData = await moh(page);
-    const [mohSource] = await NewsSource.findOrCreate({
+  console.log(nhcData);
+
+  if (nhcPush.length > 0) {
+    broadcast(tg, chinaSubscriptions, nhcPush.join('\n\n'));
+  }
+}
+
+async function scrapeMOH(page: Page): Promise<void> {
+  const mohData = await moh(page);
+  const [mohSource] = await NewsSource.findOrCreate({
+    where: {
+      name: 'MOH',
+    },
+  });
+
+  const [sgRegion] = await Region.findOrCreate({
+    where: { name: 'Singapore' },
+  });
+
+  const sgSubscriptions: Subscription[] = await Subscription.findAll({
+    where: {
+      region_id: sgRegion.id,
+    },
+  });
+
+  const existingMOHArticles: Article[] = await News.findAll({
+    where: {
+      news_source_id: mohSource.id,
+    },
+  });
+  const mohPush: string[] = [];
+  for (const article of mohData.news) {
+    if (!existingMOHArticles.find(a => a.link === article.link)) {
+      mohPush.push(`[${article.title}](${article.link})`);
+    }
+    await News.findOrCreate({
       where: {
-        name: 'MOH',
-      },
-    });
-
-    const [sgRegion] = await Region.findOrCreate({
-      where: { name: 'Singapore' },
-    });
-
-    const sgSubscriptions: Subscription[] = await Subscription.findAll({
-      where: {
-        region_id: sgRegion.id,
-      },
-    });
-
-    const existingMOHArticles: Article[] = await News.findAll({
-      where: {
+        title: article.title,
+        link: article.link,
+        writtenAt: moment(article.date, 'DD MMM YYYY').toISOString(),
         news_source_id: mohSource.id,
       },
     });
-    const mohPush: string[] = [];
-    for (const article of mohData.news) {
-      if (!existingMOHArticles.find(a => a.link === article.link)) {
-        mohPush.push(`[${article.title}](${article.link})`);
-      }
-      await News.findOrCreate({
-        where: {
-          title: article.title,
-          link: article.link,
-          writtenAt: moment(article.date, 'DD MMM YYYY').toISOString(),
-          news_source_id: mohSource.id,
-        },
-      });
-    }
-    if (mohPush.length > 0) {
-      await broadcast(tg, sgSubscriptions, mohPush.join('\n\n'));
-    }
-
-    const currentDorscon = await redisClient.get('MOH.DORSCON');
-    if (currentDorscon !== mohData.dorscon) {
-      await broadcast(
-        tg,
-        sgSubscriptions,
-        `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``
-      );
-    }
-    await redisClient.set('MOH.DORSCON', mohData.dorscon);
-
-    const currentMOHConfirmedCases = parseInt(
-      (await redisClient.get('MOH.CONFIRMED_CASES')) || '',
-      10
-    );
-    if (currentMOHConfirmedCases !== mohData.confirmedCases) {
-      await broadcast(
-        tg,
-        sgSubscriptions,
-        `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``
-      );
-    }
-    await redisClient.set(
-      'MOH.CONFIRMED_CASES',
-      mohData.confirmedCases.toString()
-    );
-    console.log(mohData);
-  } catch (e) {
-    console.error(e);
+  }
+  if (mohPush.length > 0) {
+    await broadcast(tg, sgSubscriptions, mohPush.join('\n\n'));
   }
 
-  // GLOBAL
+  const currentDorscon = await redisClient.get('MOH.DORSCON');
+  if (currentDorscon !== mohData.dorscon) {
+    await broadcast(
+      tg,
+      sgSubscriptions,
+      `*UPDATE:* The DORSCON level changed from \`${currentDorscon}\` → \`${mohData.dorscon}\``
+    );
+  }
+  await redisClient.set('MOH.DORSCON', mohData.dorscon);
 
+  const currentMOHConfirmedCases = parseInt(
+    (await redisClient.get('MOH.CONFIRMED_CASES')) || '',
+    10
+  );
+  if (currentMOHConfirmedCases !== mohData.confirmedCases) {
+    await broadcast(
+      tg,
+      sgSubscriptions,
+      `*UPDATE:* The MOH's number of confirmed cases changed from \`${currentMOHConfirmedCases}\` → \`${mohData.confirmedCases}\``
+    );
+  }
+  await redisClient.set(
+    'MOH.CONFIRMED_CASES',
+    mohData.confirmedCases.toString()
+  );
+  console.log(mohData);
+}
+async function scrapeBNO(page: Page): Promise<void> {
   const bnoData = await bnoNews(page);
 
   // List of regions
@@ -248,6 +222,47 @@ async function scrape(): Promise<void> {
 
   if (totalPush.length > 0) {
     broadcast(tg, allSubs, totalPush.join('\n'));
+  }
+}
+
+async function scrape(): Promise<void> {
+  console.log('Scraping');
+  const browser = await puppeteer.launch({
+    headless: isProduction,
+    defaultViewport: null,
+    args: isProduction ? ['--no-sandbox'] : [],
+  });
+  const page = await browser.newPage();
+
+  // Disable navigator.webdriver
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => false,
+    });
+  });
+
+  // CHINA
+
+  try {
+    await scrapeBNO(page);
+  } catch (e) {
+    console.error(e);
+  }
+
+  // SINGAPORE
+
+  try {
+    await scrapeMOH(page);
+  } catch (e) {
+    console.error(e);
+  }
+
+  // GLOBAL
+
+  try {
+    await scrapeBNO(page);
+  } catch (e) {
+    console.error(e);
   }
 
   await browser.close();
