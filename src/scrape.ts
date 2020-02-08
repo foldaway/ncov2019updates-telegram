@@ -9,6 +9,7 @@ import { Article } from './sources/data-model';
 import { moh } from './sources/moh';
 import { bnoNews, formatChanges } from './sources/bno';
 import moment from 'moment';
+import axios from 'axios';
 
 const tg = new Telegram(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -225,6 +226,27 @@ async function scrapeBNO(page: Page): Promise<void> {
   }
 }
 
+async function reportError(page: Page) {
+  try {
+    const screenshot = await page.screenshot({ encoding: 'base64' }); // base64
+    const resp = await axios.post(
+      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+      `image=${encodeURIComponent(screenshot)}&name=${encodeURIComponent(
+        page.url()
+      )}`,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        responseType: 'json',
+      }
+    );
+    console.log(`Screenshot captured at: ${resp.data.data.url_viewer}`);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 async function scrape(): Promise<void> {
   console.log('Scraping');
   const browser = await puppeteer.launch({
@@ -247,6 +269,7 @@ async function scrape(): Promise<void> {
     await scrapeBNO(page);
   } catch (e) {
     console.error(e);
+    reportError(page);
   }
 
   // SINGAPORE
@@ -255,6 +278,7 @@ async function scrape(): Promise<void> {
     await scrapeMOH(page);
   } catch (e) {
     console.error(e);
+    reportError(page);
   }
 
   // GLOBAL
@@ -263,6 +287,7 @@ async function scrape(): Promise<void> {
     await scrapeBNO(page);
   } catch (e) {
     console.error(e);
+    reportError(page);
   }
 
   await browser.close();
