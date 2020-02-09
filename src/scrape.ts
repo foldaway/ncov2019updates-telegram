@@ -269,7 +269,7 @@ async function scrape(): Promise<void> {
   // CHINA
 
   try {
-    await scrapeBNO(page);
+    await scrapeNHC(page);
   } catch (e) {
     console.error(e);
     reportError(page);
