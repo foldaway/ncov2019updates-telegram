@@ -219,7 +219,10 @@ async function scrapeBNO(page: Page): Promise<void> {
   }
   await redisClient.set('BNO.TOTAL_DEATHS', totalDeaths.toString());
 
-  const allSubs: Subscription[] = await Subscription.findAll();
+  const allSubs: Subscription[] = await Subscription.findAll({
+    attributes: ['chatId'],
+    group: 'chatId',
+  });
 
   if (totalPush.length > 0) {
     broadcast(tg, allSubs, totalPush.join('\n'));
