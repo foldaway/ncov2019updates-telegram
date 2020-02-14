@@ -109,9 +109,9 @@ async function scrapeMOH(page: Page): Promise<void> {
       },
     });
   }
-  if (mohPush.length > 0) {
+  /*if (mohPush.length > 0) {
     await broadcast(tg, sgSubscriptions, mohPush.join('\n\n'));
-  }
+    }*/
 
   const currentDorscon = await redisClient.get('MOH.DORSCON');
   if (currentDorscon !== mohData.dorscon) {
