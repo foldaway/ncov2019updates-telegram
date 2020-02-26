@@ -10,6 +10,7 @@ import { moh } from './sources/moh';
 import { bnoNews, formatChanges } from './sources/bno';
 import moment from 'moment';
 import axios from 'axios';
+import * as Sentry from '@sentry/node';
 
 const tg = new Telegram(process.env.TELEGRAM_BOT_TOKEN!);
 
@@ -18,6 +19,12 @@ const redisClient = createHandyClient({
 });
 
 const isProduction = process.env.NODE_ENV === 'production';
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+  });
+}
 
 async function scrapeNHC(page: Page): Promise<void> {
   const nhcData = await nhc(page);
@@ -229,7 +236,7 @@ async function scrapeBNO(page: Page): Promise<void> {
     }*/
 }
 
-async function reportError(page: Page) {
+async function reportError(e: Error, page: Page) {
   try {
     const screenshot = await page.screenshot({ encoding: 'base64' }); // base64
     const resp = await axios.post(
@@ -245,8 +252,14 @@ async function reportError(page: Page) {
       }
     );
     console.log(`Screenshot captured at: ${resp.data.data.url_viewer}`);
-  } catch (e) {
+    Sentry.configureScope(function(scope) {
+      scope.setExtra('screenshot', resp.data.data.url_viewer);
+      Sentry.captureException(e);
+    });
+  } catch (err) {
     console.error(e.message);
+    Sentry.captureException(e);
+    Sentry.captureException(err);
   }
 }
 
@@ -272,7 +285,7 @@ async function scrape(): Promise<void> {
     await scrapeNHC(page);
   } catch (e) {
     console.error(e);
-    reportError(page);
+    reportError(e, page);
   }
 
   // SINGAPORE
@@ -281,7 +294,7 @@ async function scrape(): Promise<void> {
     await scrapeMOH(page);
   } catch (e) {
     console.error(e);
-    reportError(page);
+    reportError(e, page);
   }
 
   // GLOBAL
@@ -290,7 +303,7 @@ async function scrape(): Promise<void> {
     await scrapeBNO(page);
   } catch (e) {
     console.error(e);
-    reportError(page);
+    reportError(e, page);
   }
 
   await browser.close();
