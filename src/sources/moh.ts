@@ -9,17 +9,16 @@ interface MOH {
 
 // Ministry of Health, Republic of Singapore
 export async function moh(page: Page): Promise<MOH> {
-  await page.goto('https://www.moh.gov.sg/2019-ncov-wuhan');
+  await page.goto('https://www.moh.gov.sg/covid-19');
 
   await page.waitForSelector('.sfContentBlock');
 
   const confirmedCasesElem = await page.$x(
-    '//*[contains(text(), "Confirmed cases")]/ancestor::td/following-sibling::td'
+    '//*[contains(text(), "Total Confirmed Cases")]/ancestor::td/following-sibling::td'
   );
 
   const confirmedCases = parseInt(
-    (await confirmedCasesElem?.[0]?.$eval('span', elem => elem.textContent)) ||
-      '',
+    (await confirmedCasesElem?.[0]?.$eval('p', elem => elem.textContent)) || '',
     10
   );
 
