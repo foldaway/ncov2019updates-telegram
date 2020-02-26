@@ -246,7 +246,7 @@ async function reportError(page: Page) {
     );
     console.log(`Screenshot captured at: ${resp.data.data.url_viewer}`);
   } catch (e) {
-    console.error(e);
+    console.error(e.message);
   }
 }
 
