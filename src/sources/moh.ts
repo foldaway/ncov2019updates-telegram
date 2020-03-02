@@ -13,12 +13,22 @@ export async function moh(page: Page): Promise<MOH> {
 
   await page.waitForSelector('.sfContentBlock');
 
-  const confirmedCasesElem = await page.$x(
-    '//*[contains(text(), "Total Confirmed Cases")]/ancestor::td/following-sibling::td'
+  const activeCasesElem = await page.$x(
+    '(//*[contains(text(), "ACTIVE CASES")]/ancestor::td/ancestor::tr/following-sibling::tr)[1]/td'
   );
 
-  const confirmedCases = parseInt(
-    (await confirmedCasesElem?.[0]?.$eval('p', elem => elem.textContent)) || '',
+  const activeCases = parseInt(
+    (await activeCasesElem?.[0]?.$eval('span', elem => elem.textContent)) || '',
+    10
+  );
+
+  const dischargedCasesElem = await page.$x(
+    '(//*[contains(text(), "Discharged")]/ancestor::td/ancestor::tr/following-sibling::tr)[1]/td[2]/strong'
+  );
+
+  const dischargedCases = parseInt(
+    (await dischargedCasesElem?.[0]?.$eval('span', elem => elem.textContent)) ||
+      '',
     10
   );
 
@@ -53,5 +63,5 @@ export async function moh(page: Page): Promise<MOH> {
     return data;
   }, newsTable);
 
-  return { confirmedCases, dorscon, news };
+  return { confirmedCases: activeCases + dischargedCases, dorscon, news };
 }
