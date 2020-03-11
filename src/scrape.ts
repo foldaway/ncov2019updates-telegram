@@ -268,7 +268,9 @@ async function scrape(): Promise<void> {
   const browser = await puppeteer.launch({
     headless: isProduction,
     defaultViewport: null,
-    args: isProduction ? ['--no-sandbox'] : [],
+    args: isProduction
+      ? ['--no-sandbox']
+      : ['--disable-features=site-per-process'],
   });
   const page = await browser.newPage();
 
