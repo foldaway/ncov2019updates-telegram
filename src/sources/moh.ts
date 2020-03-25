@@ -14,7 +14,7 @@ export async function moh(page: Page): Promise<MOH> {
   await page.waitForSelector('.sfContentBlock');
 
   const activeCasesElem = await page.$x(
-    '(//*[contains(text(), "ACTIVE CASES")]/ancestor::td/ancestor::tr/following-sibling::tr)[1]/td'
+    '//*[contains(text(), "Active Cases")]/ancestor::td/ancestor::tr/following-sibling::tr/td/strong'
   );
 
   const activeCases = parseInt(
@@ -23,7 +23,7 @@ export async function moh(page: Page): Promise<MOH> {
   );
 
   const dischargedCasesElem = await page.$x(
-    '(//*[contains(text(), "Discharged")]/ancestor::td/ancestor::tr/following-sibling::tr)[1]/td[2]/strong'
+    '//*[contains(text(), "Discharged")]/ancestor::td/ancestor::tr/following-sibling::tr/td/strong'
   );
 
   const dischargedCases = parseInt(
