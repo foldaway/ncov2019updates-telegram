@@ -16,10 +16,12 @@ function patchRegion(region: string): string {
   return patchTable[region] || region;
 }
 
-export async function bnoNews(page: Page): Promise<BNOData[]> {
-  await page.goto(
-    'https://bnonews.com/index.php/2020/02/the-latest-coronavirus-cases/'
-  );
+async function scrape(
+  page: Page,
+  url: string,
+  sourceColumnIndex = 6
+): Promise<BNOData[]> {
+  await page.goto(url);
 
   const iframe = await page.$('#mvp-content-main > iframe');
   if (!iframe) {
@@ -32,59 +34,86 @@ export async function bnoNews(page: Page): Promise<BNOData[]> {
     throw new Error('Could not get iframe content frame');
   }
 
-  const switchItems = await frame.$$('.switcherContent td');
   const data: BNOData[] = [];
 
-  if (!switchItems) {
-    throw new Error('Could not get switch items');
+  await frame?.waitForSelector('iframe', { timeout: 5000 });
+  const switchContentIFrame = await frame?.$('iframe');
+  const switchContentFrame = await switchContentIFrame?.contentFrame();
+
+  const tables = await switchContentFrame?.$$('.waffle');
+
+  if (!tables) {
+    throw new Error('Could not get tables');
   }
-  let firstSwitchItem = true;
 
-  for (const switchItem of switchItems) {
-    await switchItem.click();
-    if (!firstSwitchItem) {
-      await frame.waitForNavigation();
-    }
-    firstSwitchItem = false;
+  for (const table of tables) {
+    const tbody = await table.$('tbody');
+    const rows = await tbody?.$$('tr');
 
-    await frame?.waitForSelector('iframe', { timeout: 5000 });
-    const switchContentIFrame = await frame?.$('iframe');
-    const switchContentFrame = await switchContentIFrame?.contentFrame();
-
-    const tables = await switchContentFrame?.$$('.waffle');
-
-    if (!tables) {
-      throw new Error('Could not get tables');
+    if (!rows) {
+      throw new Error('Could not get table rows');
     }
 
-    for (const table of tables) {
-      const tbody = await table.$('tbody');
-      const rows = await tbody?.$$('tr');
+    for (const row of rows) {
+      const cells = await row.$$eval('td', cells =>
+        cells.map(cell => cell.textContent)
+      );
 
-      if (!rows) {
-        throw new Error('Could not get table rows');
+      if (cells[sourceColumnIndex] !== 'Source') {
+        continue;
       }
 
-      for (const row of rows) {
-        const cells = await row.$$eval('td', cells =>
-          cells.map(cell => cell.textContent)
-        );
-
-        if (cells[6] !== 'Source') {
-          continue;
-        }
-
-        data.push({
-          region: patchRegion(cells[0] || ''),
-          cases: parseInt(cells[1]?.replace(/,/g, '') || '', 10),
-          deaths: parseInt(cells[2]?.replace(/,/g, '') || '', 10),
-          notes: `Serious: ${cells[3]}, Critical: ${cells[4]} Recovered: ${cells[5]}`,
-        });
-      }
+      data.push({
+        region: patchRegion(cells[0] || ''),
+        cases: parseInt(cells[1]?.replace(/,/g, '') || '', 10),
+        deaths: parseInt(cells[2]?.replace(/,/g, '') || '', 10),
+        notes: `Serious: ${cells[3]}, Critical: ${cells[4]} Recovered: ${cells[5]}`,
+      });
     }
   }
 
   return data.filter(d => d.region !== 'TOTAL');
+}
+
+export async function bnoNews(page: Page): Promise<BNOData[]> {
+  const data: BNOData[] = [];
+  data.push(
+    ...(await scrape(
+      page,
+      'https://bnonews.com/index.php/2020/02/the-latest-coronavirus-cases/',
+      8
+    ))
+  );
+
+  data.push(
+    ...(await scrape(
+      page,
+      'https://bnonews.com/index.php/2019/12/tracking-coronavirus-u-s-data/'
+    ))
+  );
+
+  data.push(
+    ...(await scrape(
+      page,
+      'https://bnonews.com/index.php/2019/12/tracking-coronavirus-china-data/'
+    ))
+  );
+
+  data.push(
+    ...(await scrape(
+      page,
+      'https://bnonews.com/index.php/2020/01/tracking-coronavirus-canada-data/'
+    ))
+  );
+
+  data.push(
+    ...(await scrape(
+      page,
+      'https://bnonews.com/index.php/2019/12/tracking-coronavirus-australia-data/'
+    ))
+  );
+
+  return data;
 }
 
 export function formatChanges(oldData: BNOData, newData: BNOData): string {
