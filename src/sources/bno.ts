@@ -19,7 +19,9 @@ function patchRegion(region: string): string {
 async function scrape(
   page: Page,
   url: string,
-  sourceColumnIndex = 6
+
+  sourceColumnIndex = 6,
+  deathColumnIndex = 2
 ): Promise<BNOData[]> {
   await page.goto(url);
 
@@ -66,7 +68,7 @@ async function scrape(
       data.push({
         region: patchRegion(cells[0] || ''),
         cases: parseInt(cells[1]?.replace(/,/g, '') || '', 10),
-        deaths: parseInt(cells[2]?.replace(/,/g, '') || '', 10),
+        deaths: parseInt(cells[deathColumnIndex]?.replace(/,/g, '') || '', 10),
         notes: `Serious: ${cells[3]}, Critical: ${cells[4]} Recovered: ${cells[5]}`,
       });
     }
@@ -81,7 +83,8 @@ export async function bnoNews(page: Page): Promise<BNOData[]> {
     ...(await scrape(
       page,
       'https://bnonews.com/index.php/2020/02/the-latest-coronavirus-cases/',
-      8
+      8,
+      3
     ))
   );
 
