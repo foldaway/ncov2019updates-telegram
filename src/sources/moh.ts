@@ -21,6 +21,10 @@ export async function moh(page: Page): Promise<MOH> {
     (await activeCasesElem?.[0]?.$eval('span', elem => elem.textContent)) || '',
     10
   );
+     
+  if (isNaN(activeCases)) {
+     throw new Error('activeCases is NaN!');
+  }
 
   const dischargedCasesElem = await page.$x(
     '//*[contains(text(), "Discharged")]/ancestor::td/ancestor::tr/following-sibling::tr/td/font'
@@ -31,6 +35,10 @@ export async function moh(page: Page): Promise<MOH> {
       '',
     10
   );
+     
+  if (isNaN(dischargedCases)) {
+     throw new Error('dischargedCases is NaN!');
+  }
 
   const dorsconElem = await page.$x(
     '//*[contains(text(), "DORSCON Level")]/ancestor::td/following-sibling::td'
